@@ -1,0 +1,102 @@
+secondOnes:
+      MOV R1, #0        ; Initialize R1 with 0
+      PUSH {R0, R1}     ; Save R0 & R1 on the stack
+      BL Print
+      LDR R0, .LastKeyAndReset
+      CMP R0, #82       ; Compare R0 with 82 (ASCII code for 'R')
+      BEQ Reset         ; Branch to reset if equal
+      CMP R0, #80       ; Compare R0 with 80 (ASCII code for 'P')
+      BEQ Pause         ; Branch to Pause if equal
+      LDRB R1, 0x001f1
+      ADD R1, R1, #1
+      STRB R1, 0x001f1
+      POP {R0, R1}
+      LDRB R1, 0x001f1
+      CMP R1, #10
+      BEQ secondTens
+      BL delay
+secondTens:
+      MOV R1, #0        ; Reset R1 to 0 (counter for secondTens digit)
+      STRB R1, 0x001f1  ; Store 0 here
+      LDRB R1, 0x001f2  ; Load the value into R1
+      ADD R1, R1, #1    ; Increment by 1
+      STRB R1, 0x001f2  ; Store updated value
+      CMP R1, #6        ; Compare R1 with 6
+      BEQ minuteOnes    ; Branch to minuteOnes if equal
+      BL delay
+minuteOnes:
+      MOV R1, #0
+      STRB R1, 0x001f2
+      LDRB R1, 0x001f3
+      ADD R1, R1, #1
+      STRB R1, 0x001f3
+      CMP R1, #10
+      BEQ minuteTens
+      BL delay
+minuteTens:
+      MOV R1, #0
+      STRB R1, 0x001f3
+      LDRB R1, 0x001f4
+      ADD R1, R1, #1
+      STRB R1, 0x001f4
+      CMP R1, #6
+      BEQ stop
+      BL delay
+delay:
+      PUSH {R1, R4, R5, R6} ; Save R1,R4,R5,R6 on the stack
+      LDR R1, .Time     ; Load current time into R1
+Time:
+      MOV R5, R1        ; Copy current time into R5
+      LDR R4, .Time
+      SUB R6, R4, R5    ; Calculate elapsed time
+      CMP R6, #1        ; Compare elapsed time with 1 (delay time)
+      BLT Time
+      POP {R1, R4, R5, R6}
+      B secondOnes
+Print:
+      PUSH {R0}
+      LDRB R0, 0x001f4  ; minuteTens digit
+      STR R0, .WriteUnsignedNum
+      LDRB R0, 0x001f3  ; minuteOnes digit
+      STR R0, .WriteUnsignedNum
+      MOV R0, #Colon
+      STR R0, .WriteString
+      LDRB R0, 0x001f2  ; secondTens digit
+      STR R0, .WriteUnsignedNum
+      LDRB R0, 0x001f1  ; secondOnes digit
+      STR R0, .WriteUnsignedNum
+      MOV R0, #NewLine
+      STR R0, .WriteString
+      POP {R0}
+      RET
+Pause:
+      LDR R0, .LastKeyAndReset
+      CMP R0, #82       ; Allows to reset while in Pause
+      BEQ Reset
+      CMP R0, #80       ; Resume stopwatch
+      BEQ secondOnes
+      B Pause
+Reset:
+      MOV R0, #0
+      STR R0, 0x001f0
+      STRB R0, 0x001f1
+      STRB R0, 0x001f2
+      STRB R0, 0x001f3
+      STRB R0, 0x001f4
+      PUSH {LR}
+      BL Print
+      POP {LR}
+      B Pause
+// Stops the stopwatch when it reaches 99:99
+stop:
+      MOV R0, #0
+      STR R0, 0x001f0   ; Store 0 in 0x001f0 (stop signal)
+      MOV R0, #0
+      STR R0, 0x001f4
+      MOV R0, #0
+      STR R0, 0x001f8
+      MOV R0, #0
+      STR R0, 0x001fc
+      B secondOnes
+NewLine: .ASCIZ "\n\n\n"
+Colon: .ASCIZ ": "
